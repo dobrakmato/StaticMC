@@ -1,0 +1,37 @@
+package org.spacehq.mc.protocol1_8.data.game.values.entity;
+
+public enum MobType {
+
+	CREEPER,
+	SKELETON,
+	SPIDER,
+	GIANT_ZOMBIE,
+	ZOMBIE,
+	SLIME,
+	GHAST,
+	ZOMBIE_PIGMAN,
+	ENDERMAN,
+	CAVE_SPIDER,
+	SILVERFISH,
+	BLAZE,
+	MAGMA_CUBE,
+	ENDER_DRAGON,
+	WITHER,
+	BAT,
+	WITCH,
+	ENDERMITE,
+	GUARDIAN,
+	PIG,
+	SHEEP,
+	COW,
+	CHICKEN,
+	SQUID,
+	WOLF,
+	MOOSHROOM,
+	SNOWMAN,
+	OCELOT,
+	IRON_GOLEM,
+	HORSE,
+	VILLAGER;
+
+}

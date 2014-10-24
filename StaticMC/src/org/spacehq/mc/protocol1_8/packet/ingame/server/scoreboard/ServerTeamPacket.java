@@ -1,0 +1,161 @@
+package org.spacehq.mc.protocol1_8.packet.ingame.server.scoreboard;
+
+import java.io.IOException;
+
+import org.spacehq.mc.protocol1_8.data.game.values.MagicValues;
+import org.spacehq.mc.protocol1_8.data.game.values.scoreboard.FriendlyFire;
+import org.spacehq.mc.protocol1_8.data.game.values.scoreboard.NameTagVisibility;
+import org.spacehq.mc.protocol1_8.data.game.values.scoreboard.TeamAction;
+import org.spacehq.mc.protocol1_8.data.game.values.scoreboard.TeamColor;
+import org.spacehq.packetlib.io.NetInput;
+import org.spacehq.packetlib.io.NetOutput;
+import org.spacehq.packetlib.packet.Packet;
+
+public class ServerTeamPacket implements Packet {
+    
+    private String            name;
+    private TeamAction        action;
+    private String            displayName;
+    private String            prefix;
+    private String            suffix;
+    private FriendlyFire      friendlyFire;
+    private NameTagVisibility nameTagVisibility;
+    private TeamColor         color;
+    private String            players[];
+    
+    @SuppressWarnings("unused")
+    private ServerTeamPacket() {
+    }
+    
+    public ServerTeamPacket(final String name) {
+        this.name = name;
+        this.action = TeamAction.REMOVE;
+    }
+    
+    public ServerTeamPacket(final String name, final TeamAction action,
+            final String players[]) {
+        if (action != TeamAction.ADD_PLAYER && action != TeamAction.REMOVE_PLAYER) { throw new IllegalArgumentException(
+                "(name, action, players) constructor only valid for adding and removing players."); }
+        
+        this.name = name;
+        this.action = action;
+        this.players = players;
+    }
+    
+    public ServerTeamPacket(final String name, final String displayName,
+            final String prefix, final String suffix, final FriendlyFire friendlyFire,
+            final NameTagVisibility nameTagVisibility, final TeamColor color) {
+        this.name = name;
+        this.displayName = displayName;
+        this.prefix = prefix;
+        this.suffix = suffix;
+        this.friendlyFire = friendlyFire;
+        this.nameTagVisibility = nameTagVisibility;
+        this.color = color;
+        this.action = TeamAction.UPDATE;
+    }
+    
+    public ServerTeamPacket(final String name, final String displayName,
+            final String prefix, final String suffix, final FriendlyFire friendlyFire,
+            final NameTagVisibility nameTagVisibility, final TeamColor color,
+            final String players[]) {
+        this.name = name;
+        this.displayName = displayName;
+        this.prefix = prefix;
+        this.suffix = suffix;
+        this.friendlyFire = friendlyFire;
+        this.nameTagVisibility = nameTagVisibility;
+        this.color = color;
+        this.players = players;
+        this.action = TeamAction.CREATE;
+    }
+    
+    public String getTeamName() {
+        return this.name;
+    }
+    
+    public TeamAction getAction() {
+        return this.action;
+    }
+    
+    public String getDisplayName() {
+        return this.displayName;
+    }
+    
+    public String getPrefix() {
+        return this.prefix;
+    }
+    
+    public String getSuffix() {
+        return this.suffix;
+    }
+    
+    public FriendlyFire getFriendlyFire() {
+        return this.friendlyFire;
+    }
+    
+    public NameTagVisibility getNameTagVisibility() {
+        return this.nameTagVisibility;
+    }
+    
+    public TeamColor getColor() {
+        return this.color;
+    }
+    
+    public String[] getPlayers() {
+        return this.players;
+    }
+    
+    @Override
+    public void read(final NetInput in) throws IOException {
+        this.name = in.readString();
+        this.action = MagicValues.key(TeamAction.class, in.readByte());
+        if (this.action == TeamAction.CREATE || this.action == TeamAction.UPDATE) {
+            this.displayName = in.readString();
+            this.prefix = in.readString();
+            this.suffix = in.readString();
+            this.friendlyFire = MagicValues.key(FriendlyFire.class, in.readByte());
+            this.nameTagVisibility = MagicValues.key(NameTagVisibility.class,
+                    in.readString());
+            this.color = MagicValues.key(TeamColor.class, in.readByte());
+        }
+        
+        if (this.action == TeamAction.CREATE || this.action == TeamAction.ADD_PLAYER
+                || this.action == TeamAction.REMOVE_PLAYER) {
+            this.players = new String[in.readVarInt()];
+            for (int index = 0; index < this.players.length; index++) {
+                this.players[index] = in.readString();
+            }
+        }
+    }
+    
+    @Override
+    public void write(final NetOutput out) throws IOException {
+        out.writeString(this.name);
+        out.writeByte(MagicValues.value(Integer.class, this.action));
+        if (this.action == TeamAction.CREATE || this.action == TeamAction.UPDATE) {
+            out.writeString(this.displayName);
+            out.writeString(this.prefix);
+            out.writeString(this.suffix);
+            out.writeByte(MagicValues.value(Integer.class, this.friendlyFire));
+            out.writeString(MagicValues.value(String.class, this.nameTagVisibility));
+            out.writeByte(MagicValues.value(Integer.class, this.color));
+        }
+        
+        if (this.action == TeamAction.CREATE || this.action == TeamAction.ADD_PLAYER
+                || this.action == TeamAction.REMOVE_PLAYER) {
+            out.writeVarInt(this.players.length);
+            for (String player : this.players) {
+                if (player != null) {
+                    out.writeString(player);
+                }
+            }
+        }
+    }
+    
+    @Override
+    public boolean isPriority() {
+        return false;
+    }
+    
+}

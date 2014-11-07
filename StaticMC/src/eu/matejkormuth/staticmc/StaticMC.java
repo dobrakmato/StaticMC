@@ -1,6 +1,7 @@
 package eu.matejkormuth.staticmc;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -14,6 +15,8 @@ import org.spacehq.mc.protocol1_8.ProtocolConstants;
 import org.spacehq.mc.protocol1_8.ServerLoginHandler;
 import org.spacehq.mc.protocol1_8.data.game.EntityMetadata;
 import org.spacehq.mc.protocol1_8.data.game.Position;
+import org.spacehq.mc.protocol1_8.data.game.values.PlayerListEntry;
+import org.spacehq.mc.protocol1_8.data.game.values.PlayerListEntryAction;
 import org.spacehq.mc.protocol1_8.data.game.values.entity.MobType;
 import org.spacehq.mc.protocol1_8.data.game.values.entity.player.GameMode;
 import org.spacehq.mc.protocol1_8.data.game.values.setting.Difficulty;
@@ -29,11 +32,14 @@ import org.spacehq.mc.protocol1_8.packet.ingame.client.ClientChatPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.client.player.ClientPlayerMovementPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.ServerChatPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.ServerJoinGamePacket;
+import org.spacehq.mc.protocol1_8.packet.ingame.server.ServerPlayerListDataPacket;
+import org.spacehq.mc.protocol1_8.packet.ingame.server.ServerPlayerListEntryPacket;
+import org.spacehq.mc.protocol1_8.packet.ingame.server.entity.ServerEntityPositionRotationPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.entity.player.ServerPlayerAbilitiesPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.entity.player.ServerPlayerPositionRotationPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.entity.spawn.ServerSpawnMobPacket;
-import org.spacehq.mc.protocol1_8.packet.ingame.server.world.ServerChunkDataPacket;
 import org.spacehq.mc.protocol1_8.packet.ingame.server.world.ServerSpawnPositionPacket;
+import org.spacehq.mc.protocol1_8.packet.ingame.server.world.ServerUpdateTimePacket;
 import org.spacehq.packetlib.Server;
 import org.spacehq.packetlib.Session;
 import org.spacehq.packetlib.event.server.ServerAdapter;
@@ -120,14 +126,30 @@ public class StaticMC {
                                 + session.getHost() + ":" + session.getPort()
                                 + " has logged in!");
                         
+                        // Send world data.
+                        /*
+                         * for (Chunk chunk : StaticMC.this.world.getChunks()) { session.send(new ServerChunkDataPacket(
+                         * chunk.coordinates.getChunkX(), chunk.coordinates.getChunkZ(), chunk.chunks, chunk.biomes)); }
+                         */
+                        
                         // Send spawn position.
                         session.send(new ServerSpawnPositionPacket(new Position(
                                 StaticMC.this.world.getSpawn().getBlockX(),
                                 StaticMC.this.world.getSpawn().getBlockY(),
                                 StaticMC.this.world.getSpawn().getBlockZ())));
                         // Send player abilities.
-                        session.send(new ServerPlayerAbilitiesPacket(true, true, true,
-                                true, .1F, .1F));
+                        session.send(new ServerPlayerAbilitiesPacket(false, false,
+                                false, false, .1F, .1F));
+                        // Send helt item.
+                        session.send(new org.spacehq.mc.protocol1_8.packet.ingame.server.entity.player.ServerChangeHeldItemPacket(
+                                0)); //TODO :Config
+                        // Send world time.
+                        session.send(new ServerUpdateTimePacket(
+                                StaticMC.this.world.getAge(),
+                                StaticMC.this.world.getTime()));
+                        session.send(new ServerChatPacket(new TextMessage(
+                                "Welcome to sIMPLEmc")));
+                        
                         // Send player position and look.
                         session.send(new ServerPlayerPositionRotationPacket(
                                 StaticMC.this.world.getSpawn().getX(),
@@ -135,16 +157,60 @@ public class StaticMC {
                                 StaticMC.this.world.getSpawn().getZ(),
                                 StaticMC.this.world.getSpawn().getYaw(),
                                 StaticMC.this.world.getSpawn().getPitch()));
+                        
                         // Send world data.
+                        int num = 96;
+                        int c = 0;
+                        int[] x = new int[num];
+                        int[] z = new int[num];
+                        org.spacehq.mc.protocol1_8.data.game.Chunk[][] chunks = new org.spacehq.mc.protocol1_8.data.game.Chunk[num][];
+                        byte[][] biomeData = new byte[num][];
                         for (Chunk chunk : StaticMC.this.world.getChunks()) {
-                            session.send(new ServerChunkDataPacket(
-                                    chunk.coordinates.getChunkX(),
-                                    chunk.coordinates.getChunkZ(), chunk.chunks,
-                                    chunk.biomes));
+                            if (c == num) {
+                                
+                                session.send(new org.spacehq.mc.protocol1_8.packet.ingame.server.world.ServerMultiChunkDataPacket(
+                                        x, z, chunks, biomeData));
+                                
+                                x = new int[num];
+                                z = new int[num];
+                                chunks = new org.spacehq.mc.protocol1_8.data.game.Chunk[num][];
+                                biomeData = new byte[num][];
+                                c = 0;
+                                
+                                x[c] = chunk.coordinates.getChunkX();
+                                z[c] = chunk.coordinates.getChunkZ();
+                                chunks[c] = chunk.chunks;
+                                biomeData[c] = chunk.biomes;
+                                c++;
+                            }
+                            else {
+                                x[c] = chunk.coordinates.getChunkX();
+                                z[c] = chunk.coordinates.getChunkZ();
+                                chunks[c] = chunk.chunks;
+                                biomeData[c] = chunk.biomes;
+                                c++;
+                            }
+                            /*
+                             * session.send(new ServerChunkDataPacket( chunk.coordinates.getChunkX(),
+                             * chunk.coordinates.getChunkZ(), chunk.chunks, chunk.biomes));
+                             */
                         }
+                        
+                        session.send(new ServerPlayerListDataPacket(new TextMessage(
+                                "SimpleMC server test"), new TextMessage(
+                                "everything is broken! yey!")));
                         
                         // Spawn other players.
                         for (Player p : StaticMC.this.world.getPlayers()) {
+                            session.send(new ServerEntityPositionRotationPacket(
+                                    p.getId(), 0, 0, 0, (float) p.yaw, (float) p.pitch,
+                                    p.isOnGround));
+                            session.send(new ServerPlayerListEntryPacket(
+                                    PlayerListEntryAction.ADD_PLAYER,
+                                    (PlayerListEntry[]) Arrays.asList(
+                                            new PlayerListEntry(p.profile,
+                                                    GameMode.SURVIVAL, 10,
+                                                    new TextMessage(p.getDisplayName()))).toArray()));
                             session.send(p.getSpawnPacket());
                         }
                         
@@ -172,6 +238,7 @@ public class StaticMC {
                     @Override
                     public void packetReceived(final PacketReceivedEvent event) {
                         if (event.getPacket() instanceof ClientChatPacket) {
+                            // Chat.
                             ClientChatPacket packet = event.getPacket();
                             GameProfile profile = event.getSession().getFlag(
                                     ProtocolConstants.PROFILE_KEY);
@@ -182,22 +249,32 @@ public class StaticMC {
                                             packet.getMessage()).setStyle(new MessageStyle().setColor(ChatColor.GRAY)))));
                         }
                         
+                        //StaticMC.logger.info("Packet/"
+                        //       + event.getPacket().getClass().getSimpleName());
+                        
                         // Pohyb hracov.
                         if (event.getPacket() instanceof ClientPlayerMovementPacket) {
                             ClientPlayerMovementPacket packet = event.getPacket();
                             Player p = StaticMC.this.world.getPlayer((int) event.getSession().getFlag(
                                     "pexel-player-id"));
-                            /*
-                             * StaticMC.this.world.sendGlobalPacket(new ServerEntityPositionRotationPacket( p.id,
-                             * packet.getX() - p.x, packet.getY() - p.y, packet.getZ() - p.z, (float) packet.getYaw(),
-                             * (float) packet.getPitch(), packet.isOnGround()));
-                             */
-                            p.x = packet.getX();
-                            p.y = packet.getY();
-                            p.z = packet.getZ();
-                            p.pitch = packet.getPitch();
-                            p.yaw = packet.getYaw();
-                            p.isOnGround = packet.isOnGround();
+                            
+                            if (packet.getX() != 0 && packet.getZ() != 0) {
+                                p.x = packet.getX();
+                                p.y = packet.getY();
+                                p.z = packet.getZ();
+                                p.pitch = packet.getPitch();
+                                p.yaw = packet.getYaw();
+                                p.isOnGround = packet.isOnGround();
+                                
+                                StaticMC.this.world.sendGlobalPacketExceptOne(
+                                        new ServerEntityPositionRotationPacket(p.id,
+                                                packet.getX() - p.x,
+                                                packet.getY() - p.y,
+                                                packet.getZ() - p.z,
+                                                (float) packet.getYaw(),
+                                                (float) packet.getPitch(),
+                                                packet.isOnGround()), p);
+                            }
                         }
                     }
                 });

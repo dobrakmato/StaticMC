@@ -341,4 +341,29 @@ public class World {
         }
         return profiles;
     }
+    
+    /**
+     * @return
+     */
+    public long getAge() {
+        return 20 * 10;
+    }
+    
+    /**
+     * @return
+     */
+    public long getTime() {
+        return 4000L;
+    }
+    
+    /**
+     * @param serverEntityPositionRotationPacket
+     */
+    public void sendGlobalPacketExceptOne(final Packet packet, final Player exception) {
+        for (Player p : this.players) {
+            if (p != exception) {
+                p.session.send(packet);
+            }
+        }
+    }
 }
